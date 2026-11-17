@@ -1,0 +1,26 @@
+{
+  "name": "iris-sight",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "IRIS — Intelligent Real-time Interactive Sight: Real-Time Multimodal Perception for the Visually Impaired",
+  "scripts": {
+    "dev": "node server/index.js",
+    "build": "vite build",
+    "start": "NODE_ENV=production node server/index.js",
+    "lint": "node --check server/index.js && node --check server/db.js && node --check server/gemini.js"
+  },
+  "dependencies": {
+    "@google/genai": "^3.4.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "mysql2": "^3.24.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5",
+    "vite": "^8.3.8"
+  }
+}
