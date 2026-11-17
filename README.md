@@ -1,27 +1,26 @@
 # IRIS — Intelligent Real-time Interactive Sight
 
-> A real-time AI-powered visual perception assistant for the blind and visually impaired.
+> A real-time AI-powered visual perception assistant for the blind and visually impaired, built with **Node.js, Express, React, Vite, and MySQL**.
 
 ---
 
 ## What is IRIS?
 
-IRIS (Intelligent Real-time Interactive Sight) is a web-based assistive technology application that uses your device's camera and Google's Gemini AI to help blind and low-vision individuals perceive and understand their surroundings in real time.
+IRIS (Intelligent Real-time Interactive Sight) is a browser-based assistive technology application that uses your device's live camera feed and Google's Gemini multimodal AI (`@google/genai` JavaScript SDK) to help blind and low-vision individuals perceive and understand their surroundings in real time.
 
-It detects objects, identifies safety hazards, reads signs and text out loud, and answers spoken voice queries — all from a live camera feed.
+It detects objects with 2D bounding boxes, identifies safety hazards, reads signs and text out loud, and answers spoken or typed questions — all from a live camera feed.
 
 ---
 
 ## Features
 
-- **Real-Time Object Detection** — Detects physical objects in the camera frame with 2D bounding box overlays, spatial positioning (Left / Center / Right), and distance estimation.
-- **Continuous Narration Mode** — Streams live scene descriptions out loud using the browser's speech synthesis.
-- **Smart Assist Mode** — Stays quiet in the background and only speaks up when a new object or safety hazard is detected.
-- **Voice Queries** — Ask IRIS questions like *"What am I holding?"* or *"Are there any obstacles?"* using your microphone or quick-tap chips.
-- **OCR Sign & Text Reader** — Reads visible text from signs, labels, packaging, and screens out loud.
-- **Safety Hazard Alerts** — Automatically warns users of trip hazards or approaching dangerous objects.
-- **Guest Preview Mode** — New visitors can try IRIS for 5 minutes without creating an account.
-- **User Authentication** — Full sign up, login, and logout with session management.
+- **Real-Time Object Detection & Pixel-Diff Triggering** — Samples frames locally in `<canvas>` and immediately triggers detection when the scene changes (e.g., holding up a smartphone or removing an object), drawing 2D bounding boxes with spatial positions (Left / Center / Right).
+- **Continuous Narration Mode** — Streams concise live scene descriptions out loud using the browser's Web Speech API.
+- **Smart Assist (Quiet) Mode** — Stays quiet when the scene is unchanged and speaks up when a new foreground object or safety hazard appears.
+- **Voice & Text Queries** — Ask IRIS questions like *"What am I holding?"* or *"Are there any obstacles?"* via microphone (`Ask IRIS`), text input, or quick-tap chips.
+- **OCR Sign & Text Reader** — Extracts and reads visible text from signs, labels, packaging, and screens out loud.
+- **Guest Preview Mode** — New visitors can try IRIS for **5 minutes** without creating an account.
+- **User Authentication** — Full sign up, login, logout, and persistent SQL sessions via MySQL (`mysql2`) with an automatic in-memory fallback for local/sandbox previews without MySQL configured.
 
 ---
 
@@ -29,45 +28,44 @@ It detects objects, identifies safety hazards, reads signs and text out loud, an
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Django 5 (Python) |
-| AI / Vision | Google Gemini API (multimodal) |
-| Database | MySQL (Aiven Cloud) |
-| Frontend | Vanilla HTML, CSS, JavaScript |
-| Speech | Web Speech API (browser-native) |
-| Deployment | Render (gunicorn + whitenoise) |
-| Static Files | WhiteNoise |
+| Frontend | React 19, React Router, Vite (JavaScript `.jsx`) |
+| Styling | HTML5, CSS3 (Dark Glassmorphism UI) |
+| Speech | Web Speech API (`SpeechSynthesis` & `SpeechRecognition`) |
+| Backend | Node.js 22 + Express 5 (JavaScript `.js`, no TypeScript) |
+| AI / Vision | Google Gemini API via `@google/genai` JavaScript SDK (`gemini-3.1-flash-lite` + `gemini-4-hydrogen` fallback) |
+| Database | MySQL (`mysql2/promise` with SSL) + automatic in-memory fallback |
+| Auth & Sessions | `express-session` (cookie + Bearer token) & `bcryptjs` |
+| Deployment | Render (Node Web Service) |
 
 ---
 
 ## Project Structure
 
 ```
-iris_django_project/
+iris-sight/
 │
-├── iris_django/          # Django project config
-│   ├── settings.py       # App settings, DB config, static files
-│   ├── urls.py           # Root URL routing
-│   └── wsgi.py           # WSGI entry point for deployment
+├── server/
+│   ├── index.js              # Express server, auth routes, AI APIs, Vite/static serving
+│   ├── db.js                 # MySQL (mysql2) users & sessions + in-memory fallback
+│   └── gemini.js             # @google/genai JavaScript client (vision, voice Q&A, OCR)
 │
-├── vision/               # Main Django app
-│   ├── views.py          # All views: auth, dashboard, API endpoints
-│   ├── urls.py           # App-level URL routing
-│   └── apps.py
+├── client/
+│   ├── main.jsx              # React root + BrowserRouter
+│   ├── App.jsx               # Routes & auth/guest session state
+│   ├── styles/style.css      # Dark glassmorphism styles & responsive layout
+│   ├── pages/
+│   │   ├── DashboardPage.jsx # Camera, pixel-diff loop, bounding boxes, voice/OCR
+│   │   ├── LoginPage.jsx     # Login & Guest Preview entry
+│   │   └── SignupPage.jsx    # Account registration
+│   └── components/
+│       ├── WelcomeModal.jsx
+│       └── GuestExpiredModal.jsx
 │
-├── templates/
-│   └── vision/
-│       ├── index.html    # Main dashboard UI
-│       ├── login.html    # Login page
-│       └── signup.html   # Sign up page
-│
-├── static/
-│   ├── css/style.css     # All styles (glassmorphism dark UI)
-│   └── js/app.js         # Frontend logic (camera, AI calls, speech)
-│
-├── requirements.txt      # Python dependencies
-├── render.yaml           # Render deployment config
-├── .env.example          # Environment variable template
-└── manage.py
+├── index.html                # Vite HTML entry point
+├── vite.config.js            # Vite + React configuration
+├── package.json              # Node.js dependencies & scripts
+├── metadata.json             # App capabilities & camera/mic permissions
+└── .env.example              # Environment variable template
 ```
 
 ---
@@ -76,115 +74,68 @@ iris_django_project/
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Main dashboard (requires login) |
-| `/login/` | GET, POST | User login |
-| `/signup/` | GET, POST | User registration |
-| `/logout/` | GET | Logout and clear session |
-| `/guest-login/` | GET | Start 5-minute guest session |
-| `/api/analyze-frame/` | POST | Analyze camera frame with Gemini AI |
-| `/api/voice-query/` | POST | Answer a spoken user question |
-| `/api/ocr-read/` | POST | Extract and read text from image |
-| `/api/health/` | GET | Health check endpoint |
-
----
-
-## How It Works
-
-1. The user opens the app and grants camera permission.
-2. The frontend (`app.js`) captures frames from the live video feed every 5 seconds.
-3. Each frame is converted to base64 and sent to `/api/analyze-frame/`.
-4. The Django backend sends the image to the **Google Gemini API** with a structured prompt.
-5. Gemini returns detected objects with bounding boxes, spatial positions, and a spoken announcement.
-6. The frontend renders bounding boxes on the video, updates the object list, and speaks the announcement aloud using the Web Speech API.
-7. Users can ask voice queries or tap quick-query chips for instant AI answers about their view.
+| `/api/auth/me` | GET | Get current user or remaining guest seconds |
+| `/api/auth/login` | POST | Authenticate user and issue session |
+| `/api/auth/signup` | POST | Create account in MySQL `users` table |
+| `/api/auth/guest` | POST | Start 5-minute guest session |
+| `/api/auth/logout` | POST | Destroy session |
+| `/api/analyze-frame` | POST | Analyze camera frame with `@google/genai` |
+| `/api/voice-query` | POST | Answer a spoken or typed question about the frame |
+| `/api/ocr-read` | POST | Extract and read visible text from image |
+| `/api/health` | GET | Health check and active DB mode (`mysql` or `memory-fallback`) |
 
 ---
 
 ## Running Locally
 
 ### Prerequisites
-- Python 3.10+
-- MySQL running locally or a cloud MySQL instance
+- Node.js 20+ (`npm`)
+- MySQL (local or Aiven Cloud MySQL — optional for quick local testing thanks to automatic in-memory fallback)
 - Google Gemini API key ([get one here](https://aistudio.google.com))
 
 ### Setup
 
 ```bash
-# Clone the repo
-git clone https://github.com/hasan-create/Intelligent-Real-time-Interactive-Sight.git
-cd Intelligent-Real-time-Interactive-Sight
+# 1. Install dependencies
+npm install
 
-# Create and activate virtual environment
-python -m venv venv
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # Mac/Linux
+# 2. Copy env template and fill in your values
+cp .env.example .env
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy env template and fill in your values
-copy .env.example .env     # Windows
-cp .env.example .env       # Mac/Linux
-
-# Run migrations
-python manage.py migrate
-
-# Start the development server
-python manage.py runserver
+# 3. Start development server (Express + Vite on port 3000)
+npm run dev
 ```
 
-Then open [http://localhost:8000](http://localhost:8000)
+Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
 ## Environment Variables
 
-Create a `.env` file in the root directory with the following:
+Create a `.env` file in the root directory:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
-DJANGO_SECRET_KEY=your_django_secret_key
+SESSION_SECRET=your_random_session_secret
+PORT=3000
 
-MYSQL_DATABASE=your_db_name
-MYSQL_USER=your_db_user
-MYSQL_PASSWORD=your_db_password
-MYSQL_HOST=your_db_host
+# MySQL (e.g. Aiven Cloud MySQL)
+MYSQL_HOST=your_mysql_host
 MYSQL_PORT=3306
+MYSQL_DATABASE=iris_db
+MYSQL_USER=your_mysql_user
+MYSQL_PASSWORD=your_mysql_password
 ```
 
 ---
 
 ## Deployment (Render)
 
-This project is configured for one-click deployment on [Render](https://render.com).
-
-**Build Command:**
-```
-pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
-```
-
-**Start Command:**
-```
-gunicorn iris_django.wsgi:application
-```
-
-Set all environment variables in the Render dashboard under **Environment**.
-
----
-
-## Guest Mode
-
-Users can try IRIS without registering via the **"Continue as Guest"** button on the login page. Guest sessions are limited to **5 minutes**, after which they are redirected to login or sign up.
-
----
-
-## Accessibility
-
-IRIS is built specifically for **blind and low-vision users**:
-- All detections are announced via text-to-speech
-- Safety hazards trigger immediate audio alerts
-- Voice query support means hands-free interaction
-- Minimal UI with high contrast dark theme
+1. Ensure your Aiven MySQL service is running.
+2. Create a **Web Service** on Render with the **Node** runtime:
+   - **Build Command:** `npm install && npm run build`
+   - **Start Command:** `npm start`
+3. Add `GEMINI_API_KEY`, `SESSION_SECRET`, and `MYSQL_*` under **Environment** in Render. On startup, `server/db.js` automatically creates the `users` and `sessions` tables in MySQL if they do not already exist.
 
 ---
 
